@@ -3,20 +3,22 @@ package bgu.spl.net.srv;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ConnectionsImpl<T> implements Connections<T>{
-    private ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> clients = new ConcurrentHashMap<>();
-    int counter = 0;
+public class ConnectionsImpl<T> implements Connections<T>
+{
     private static ConnectionsImpl singleton = null;
+    private final ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> clientsMap = new ConcurrentHashMap<>();
+    private static int uniqueIdCounter = 0;
 
+    public void connect(int connectionId, ConnectionHandler<T> handler)
+    {
+        clientsMap.put(connectionId, (BlockingConnectionHandler<T>) handler);
+    }
 
-void connect(int connectionId, ConnectionHandler<T> handler){
-    clients.put(connectionId, (ConnectionHandler<T>) handler);
-}
-
-boolean send(int connectionId, T msg){
+    public boolean send(int connectionId, T msg)
+    {
         try
         {
-            clients.get(connectionId).send(msg); // To search using int value and not Integer Object
+            clientsMap.get((Integer) connectionId).send(msg); // To search using int value and not Integer Object
         }
         catch (Exception ignored)
         {
@@ -24,36 +26,41 @@ boolean send(int connectionId, T msg){
         }
 
         return true;
-}
+    }
 
-void disconnect(int connectionId){
-    clients.remove(connectionId);
-}
-
-public static synchronized Connections getSingleton()
-{
-        if (singleton == null){
-            singleton = new ConnectionsImp();
+    public void disconnect(int connectionId)
+    {
+        try
+        {
+            clientsMap.get((Integer) connectionId).close();
+            clientsMap.remove((Integer) connectionId);
         }
+        catch (IOException ignored){}
+    }
 
-        return singleton;
+
+    public static synchronized Connections getSingleton()
+    {
+            if (singleton == null)
+            {
+                singleton = new ConnectionsImpl();
+            }
+
+            return singleton;
+    }
+
+    public BlockingConnectionHandler<T> getClient(Integer id)
+    {
+        return clientsMap.get(id);
+    }
+
+    public static int addNewClient()
+    {
+        return uniqueIdCounter++;
+    }
+
+    public ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> getclientsMap()
+    {
+         return clientsMap;
+    }
 }
-
-// TODO: check if necessary 
-public static int addClient()
-{
-    return counter++;
-}
-
-public BlockingConnectionHandler<T> getClient(Integer connectionId)
-{
-    return clients.get(connectionId);
-}
-
-public ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> getclientsMap(){
-
-     return clients;
-}
-}
-
-
