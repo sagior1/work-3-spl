@@ -5,20 +5,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ConnectionsImpl<T> implements Connections<T>
 {
+    private static int counter = 0;
     private static ConnectionsImpl singleton = null;
-    private final ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> clientsMap = new ConcurrentHashMap<>();
-    private static int uniqueIdCounter = 0;
+    private ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> clients = new ConcurrentHashMap<>();
+    
 
     public void connect(int connectionId, ConnectionHandler<T> handler)
     {
-        clientsMap.put(connectionId, (BlockingConnectionHandler<T>) handler);
+        clients.put(connectionId, (BlockingConnectionHandler<T>) handler);
     }
 
     public boolean send(int connectionId, T msg)
     {
         try
         {
-            clientsMap.get((Integer) connectionId).send(msg); // To search using int value and not Integer Object
+            clients.get(connectionId).send(msg); 
         }
         catch (Exception ignored)
         {
@@ -32,8 +33,8 @@ public class ConnectionsImpl<T> implements Connections<T>
     {
         try
         {
-            clientsMap.get((Integer) connectionId).close();
-            clientsMap.remove((Integer) connectionId);
+            clients.get(connectionId).close();
+            clients.remove(connectionId);
         }
         catch (IOException ignored){}
     }
@@ -51,16 +52,16 @@ public class ConnectionsImpl<T> implements Connections<T>
 
     public BlockingConnectionHandler<T> getClient(Integer id)
     {
-        return clientsMap.get(id);
+        return clients.get(id);
     }
 
-    public static int addNewClient()
+    public static int addClient()
     {
-        return uniqueIdCounter++;
+        return counter++;
     }
 
     public ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> getclientsMap()
     {
-         return clientsMap;
+         return clients;
     }
 }
