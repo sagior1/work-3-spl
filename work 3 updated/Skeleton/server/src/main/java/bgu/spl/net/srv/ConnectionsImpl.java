@@ -8,7 +8,7 @@ public class ConnectionsImpl<T> implements Connections<T>
     private static int counter = 0;
     private static ConnectionsImpl singleton = null;
     private ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> clients = new ConcurrentHashMap<>();
-    
+    private ConcurrentHashMap<Integer, String> idToName=new ConcurrentHashMap<>();
 
     public void connect(int connectionId, ConnectionHandler<T> handler)
     {
@@ -35,6 +35,7 @@ public class ConnectionsImpl<T> implements Connections<T>
         {
             clients.get(connectionId).close();
             clients.remove(connectionId);
+            idToName.remove(connectionId);
         }
         catch (IOException ignored){}
     }
@@ -55,7 +56,7 @@ public class ConnectionsImpl<T> implements Connections<T>
         return clients.get(id);
     }
 
-    public static int addClient()
+    public static int addClientCounter()
     {
         return counter++;
     }
@@ -64,4 +65,11 @@ public class ConnectionsImpl<T> implements Connections<T>
     {
          return clients;
     }
+    public void addName(Integer id,String name){
+        idToName.put(id, name);
+    }
+    public boolean clientExist(String name){
+        return idToName.contains(name);
+    }
+    
 }
