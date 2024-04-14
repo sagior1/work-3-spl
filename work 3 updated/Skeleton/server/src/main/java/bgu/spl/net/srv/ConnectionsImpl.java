@@ -42,17 +42,17 @@ public static synchronized Connections getSingleton()
 // TODO: check if necessary 
 public static int addClient()
 {
-    return uniqueIdCounter++;
+    return counter++;
 }
 
 public BlockingConnectionHandler<T> getClient(Integer connectionId)
 {
-    return clientsMap.get(connectionId);
+    return clients.get(connectionId);
 }
 
 public ConcurrentHashMap<Integer, BlockingConnectionHandler<T>> getclientsMap(){
 
-     return clientד;
+     return clients;
 }
 }
 
