@@ -3,40 +3,25 @@ package bgu.spl.net.impl.tftp;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.impl.tftp.TftpEncoderDecoder.Opcode;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionsImpl;
 import java.util.LinkedList;
+import java.util.List;
 
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private boolean shouldTerminate = false;
     int connectionId;
     private ConnectionsImpl<byte[]> connections;
-    int blocknum;
-    LinkedList<byte[]> dataToSend;
+    int blockNum;
+    LinkedList<byte[]> dataToUpload;
     private Path serverPath;
     private String fileName;
 
@@ -44,7 +29,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     public void start(int connectionId, Connections<byte[]> connections) {
         this.connectionId=connectionId;
         this.connections=(ConnectionsImpl<byte[]>)connections;
-        blocknum=0;
+        blockNum=0;
         serverPath=Paths.get("").toAbsolutePath().resolve("Flies");
     }
 
@@ -117,30 +102,29 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
     private void data(byte[] message){
-        short length = (short) (((short) message[0] ) << 8 | ((short) message[1] ));//TODO delete
-        short blockNum = (short) (((short) message[2] ) << 8 | ((short) message[3] ));//TODO delete
-        byte[] data = Arrays.copyOfRange(message, 4, message.length);//TODO delete
         byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
-        dataToSend.add(dataArray);
-        blockNum++;
+        dataToUpload.add(dataArray);
+        blockNum++;//TODO remember to inizialize to 0
         ack(blockNum);
         if(dataArray.length<512){
-            File uploadAddress = new File(filesPath + "/" + this.fileNameToWrite);
-            try (FileOutputStream out = new FileOutputStream(addressToWrite, true)) {
-                byte[] finalData = new byte[dataToWrite.size()];
-                for (int i=0; i<finalData.length; i++){
-                    finalData[i] = dataToWrite.removeFirst();
-                }
+            File uploadAddress = new File(serverPath + "/" + this.fileName);//will be fine after add rotem's part
+            try (FileOutputStream out = new FileOutputStream(uploadAddress, true)) {
                 uploadAddress.createNewFile();
-                out.write(finalData, 0, finalData.length);
-                bcast(false, this.fileNameToWrite);
+                for (byte[] data : dataToUpload) {
+                    out.write(data); // Write each byte array segment to the file
+                }
+                //bcast(false, this.fileNameToWrite);
             } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
+        
 
-        private void wrq(byte[] fileNameBytes) {
+
+    private void wrq(byte[] fileNameBytes) {
         //TODO: see if the user is logged in
-        this.tring fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+        this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
         if (containsFileWithName(fileName, "Flies" + File.separator)){
             //TODO: add error number5
         }
@@ -170,4 +154,5 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         return false;
      }
+    
 }
