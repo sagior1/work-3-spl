@@ -38,7 +38,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     int blocknum;
     LinkedList<byte[]> dataToSend;
     private Path serverPath;
-
+    private String fileName;
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
@@ -138,9 +138,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
 
-            private void wrq(byte[] fileNameBytes) {
+        private void wrq(byte[] fileNameBytes) {
         //TODO: see if the user is logged in
-        String fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+        this.tring fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
         if (containsFileWithName(fileName, "Flies" + File.separator)){
             //TODO: add error number5
         }
