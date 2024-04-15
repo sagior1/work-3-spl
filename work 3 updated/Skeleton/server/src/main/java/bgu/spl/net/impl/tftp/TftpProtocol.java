@@ -120,4 +120,37 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             } catch (IOException e) {
         }
     }
+
+            private void wrq(byte[] fileNameBytes) {
+        //TODO: see if the user is logged in
+        String fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+        if (containsFileWithName(fileName, "Flies" + File.separator)){
+            //TODO: add error number5
+        }
+        else if ((fileName.contains("0"))){
+            //TODO: add error number 0, Illegal file name - can't contain 0
+        }
+        else{
+            //TODO: send ack
+            //TODO: see if there is anything else to add here
+        }
+    }
+
+    /**
+ * Checks if a file with the specified name exists within the given directory.
+ * 
+ * @param fileName      The name of the file to check for.
+ * @param directoryPath The path of the directory to search for the file (will always be "Flies")
+ * @return              true if a file with the specified name exists in the directory, false otherwise.
+ */
+    public static boolean containsFileWithName(String inputString, String directoryPath) {
+        File directory = new File(directoryPath);
+        if (directory.exists() && directory.isDirectory()) {
+            List<String> fileList = Arrays.asList(directory.list());
+            if (fileList.contains(inputString)){
+                return true;
+            }
+        }
+        return false;
+     }
 }
