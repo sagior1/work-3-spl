@@ -24,6 +24,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     LinkedList<byte[]> dataToUpload;
     private Path serverPath;
     private String fileName;
+    String[] errorMesseges;
+
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
@@ -31,6 +33,15 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         this.connections=(ConnectionsImpl<byte[]>)connections;
         blockNum=0;
         serverPath=Paths.get("").toAbsolutePath().resolve("Flies");
+        this.errorMesseges = new String[]{
+            "Not defined, see error message (if any).",
+            "File not found – RRQ DELRQ of non-existing file.",
+            "Access violation – File cannot be written, read or deleted.",
+            "Disk full or allocation exceeded – No room in disk.",
+            "Illegal TFTP operation – Unknown Opcode.",
+            "File already exists – File name exists on WRQ.",
+            "User not logged in – Any opcode received before Login completes.",
+            "User already logged in – Login username already connected."};
     }
 
     @Override
@@ -154,5 +165,25 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         return false;
      }
+
+    public void error(short code, String errorMessege) {
+        byte[] errorMessageBytes = errorMessege.getBytes(StandardCharsets.UTF_8);
+        short opCode=5;
+        byte[] errorCodeBytes = new byte[2];
+        errorCodeBytes[0] = (byte) ((code >> 8) & 0xFF);
+        errorCodeBytes[1] = (byte) (code & 0xFF);
+        byte[] errorPacket = new byte[errorMessageBytes.length +5];
+        //first 2 byte - opCode
+        errorPacket[0] = (byte) ((opCode >> 8) & 0xFF);
+        errorPacket[1] = (byte) (opCode & 0xFF);
+        //bytes 3-4 - error code
+        errorPacket[2] = errorCodeBytes[0];
+        errorPacket[3] = errorCodeBytes[1];
+        //combine the messege and the first bytes
+        System.arraycopy(errorMessageBytes, 0, errorPacket, 4, errorMessageBytes.length);
+        //add 0 to the end of the packet
+        errorPacket[errorPacket.length-1] = 0;
+        connections.send(connectionId, errorPacket);
+    }
     
 }
