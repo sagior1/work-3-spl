@@ -15,7 +15,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     public void start(int connectionId, Connections<byte[]> connections) {
         this.connectionId=connectionId;
         this.connections=(ConnectionsImpl<byte[]>)connections;
-
     }
 
     @Override
@@ -29,11 +28,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case DIRQ:
                 break;
             case LOGRQ:
-                logrq();
+                logrq(message);
                 break;
             case DELRQ:
                 break;
             case DISC:
+                disc();
                 break;
             case DATA:
                 break;
@@ -62,6 +62,22 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
     private void logrq(byte[] message){
         String name=new String(message);
+        if(connections.clientExist(name)||connections.clientExist(connectionId)){
+            //TODO Error
+        }
+        else{
+            connections.addName(connectionId, name);
+            //TODO ack
+        }
+    }
+    private void disc(){
+        if(!connections.clientExist(connectionId)){
+            //TODO error
+        }
+        else{
+            connections.disconnect(connectionId);
+            //TODO ack
+        }
     }
 
     
