@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -51,7 +52,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case RRQ:
                 //handleReadRequest(message);
             case WRQ:
-                //handleWriteRequest(message);
+                wrq(message);
             case DIRQ:
                 break;
             case LOGRQ:
@@ -124,7 +125,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 for (byte[] data : dataToUpload) {
                     out.write(data); // Write each byte array segment to the file
                 }
-                //bcast(false, this.fileNameToWrite);
+                blockNum=0;//TODO not sure if this is needed
+                //TODO bcast(false, this.fileNameToWrite);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -166,7 +168,62 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         return false;
      }
 
-    public void error(short code, String errorMessege) {
+     private void rrq(byte[] message){
+        String fileName = new String(message, StandardCharsets.UTF_8);
+        if(!connections.clientExist(connectionId)){
+            //TODO error
+        }
+        else{
+            if(!containsFileWithName(fileName, "Flies"+File.separator)){
+                //TODO error
+            }
+            else{
+                Path filePath = serverPath.resolve(fileName);
+            try {
+                byte[] fileBytes = Files.readAllBytes(filePath);
+                LinkedList<Byte> data = new LinkedList<>();
+                for (byte b : fileBytes) {
+                    data.add(b);
+                }
+                sendData(data);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            }
+        }
+     }
+
+
+     private void sendData(LinkedList<Byte> data){
+        int blockNumber=0;
+        if (data.size() <= 512){
+            byte[] byteArray = new byte[data.size()];
+            byteArray[0] = 0;
+            byteArray[1] = 3;
+            byteArray[2] = (byte) (data.size() >> 8);
+            byteArray[3] = (byte) data.size();
+            byteArray[4] = 0;
+            byteArray[5] = (byte) blockNumber;
+            for (int i=6;i<518;i++) {
+                byteArray[i] = data.remove();  // Auto-unboxing Byte to byte
+            }
+            connections.send(connectionId, byteArray);
+        }
+        else{
+            byte[] byteArray = new byte[512+6];
+            byteArray[0] = 0;
+            byteArray[1] = 3;
+            byteArray[2] = (byte) (512 >> 8);
+            byteArray[3] = (byte) 512;
+            byteArray[4] = 0;
+            byteArray[5] = (byte) blockNumber;
+            for (int i=6;i<518;i++) {
+                byteArray[i] = data.remove();  // Auto-unboxing Byte to byte
+            }
+            connections.send(connectionId, byteArray);
+        }
+     }
+     public void error(short code, String errorMessege) {
         byte[] errorMessageBytes = errorMessege.getBytes(StandardCharsets.UTF_8);
         short opCode=5;
         byte[] errorCodeBytes = new byte[2];
