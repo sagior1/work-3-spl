@@ -71,5 +71,8 @@ public class ConnectionsImpl<T> implements Connections<T>
     public boolean clientExist(String name){
         return idToName.contains(name);
     }
+    public boolean clientExist(int id){
+        return clients.contains(id);
+    }
     
 }
