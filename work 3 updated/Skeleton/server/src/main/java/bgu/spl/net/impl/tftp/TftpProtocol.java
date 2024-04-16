@@ -53,6 +53,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         TftpEncoderDecoder.Opcode opcode = extractOpcode(message);
         switch (opcode) {
             case RRQ:
+                rrq(message);
                 //handleReadRequest(message);
             case WRQ:
                 wrq(message);
@@ -63,6 +64,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 logrq(message);
                 break;
             case DELRQ:
+                delrq();
                 break;
             case DISC:
                 disc();
