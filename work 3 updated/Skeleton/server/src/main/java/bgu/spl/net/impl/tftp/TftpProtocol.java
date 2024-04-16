@@ -57,6 +57,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case WRQ:
                 wrq(message);
             case DIRQ:
+                dirq();
                 break;
             case LOGRQ:
                 logrq(message);
