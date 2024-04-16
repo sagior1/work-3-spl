@@ -92,20 +92,20 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void logrq(byte[] message){
         String name=new String(message);
         if(connections.clientExist(name)||connections.clientExist(connectionId)){
-            //TODO Error
+            error((short) 7, errorMesseges[7]);
         }
         else{
             connections.addName(connectionId, name);
-            //TODO ack
+            ack(0);
         }
     }
     private void disc(){
         if(!connections.clientExist(connectionId)){
-            //TODO error
+            error((short) 6, errorMesseges[6]);
         }
         else{
             connections.disconnect(connectionId);
-            //TODO ack
+            ack(0);
         }
     }
     private void ack(int num){
@@ -139,10 +139,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //TODO: see if the user is logged in
         this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
         if (containsFileWithName(fileName, "Flies" + File.separator)){
-            //TODO: add error number5
+            error((short) 5, errorMesseges[5]);
         }
         else if ((fileName.contains("0"))){
-            //TODO: add error number 0, Illegal file name - can't contain 0
+
+            error((short) 0, errorMesseges[0]);
         }
         else{
             //TODO: send ack
