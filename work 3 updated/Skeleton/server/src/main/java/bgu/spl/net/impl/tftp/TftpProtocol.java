@@ -11,10 +11,12 @@ import java.util.Arrays;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.impl.tftp.TftpEncoderDecoder.Opcode;
+import bgu.spl.net.srv.BlockingConnectionHandler;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionsImpl;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
@@ -66,7 +68,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case DATA:
                 data(message);
                 break;
-            case BCAST:
+            case BCAST://TODO delete, it is not needed
                 break;
             case ACK:
                 //handleAck(message);
@@ -113,6 +115,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         connections.send(connectionId, new byte []{0,4,(byte)(a >> 8) , (byte)( a & 0xff )});
     }
 
+    //recieve the data of a file from the client and upload it (after the cliet did write request)
     private void data(byte[] message){
         byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
         dataToUpload.add(dataArray);
@@ -126,7 +129,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                     out.write(data); // Write each byte array segment to the file
                 }
                 blockNum=0;//TODO not sure if this is needed
-                //TODO bcast(false, this.fileNameToWrite);
+                bcast(false, message);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -134,7 +137,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
         
 
-
+    //request to add a file, so we check if it can be added
     private void wrq(byte[] fileNameBytes) {
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
@@ -197,7 +200,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
      }
 
-
+    //send data to client if its dirq or rrq
      private void sendData(LinkedList<Byte> data){
         int blockNumber=0;
         if (data.size() <= 512){
@@ -261,7 +264,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 try {
                 Files.delete(pathToDelete);
                 ack(0);
-                //TODO - send bcast
+                bcast(true, message);
                 isdeleted = true;
             } catch (IOException e) {
                 isdeleted = false;
@@ -272,8 +275,26 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
         }
     }
-    private void bcast(byte[] message){
 
+    private void bcast(boolean isDeleted,byte[] message){
+        byte[] data=new byte[3 + message.length];
+        data[0]=0;//adding op code
+        data[1]=9;
+        String file=new String(message, java.nio.charset.StandardCharsets.UTF_8);
+        if(isDeleted){//adding byte if for delete or
+            data[2]=0;
+            System.out.println("BCAST remove " + file);
+        }
+        else{
+            data[2]=1;
+            System.out.println("WRQ "+fileName+" complete");
+            System.out.println("BCAST add "+fileName);
+        }
+        System.arraycopy(message,0,data,3,message.length);
+        ConcurrentHashMap<Integer,BlockingConnectionHandler<byte[]>> clients=connections.getclientsMap();
+        for (Integer id : clients.keySet()) {
+             connections.send(id,data);
+        }
     }
     
 }
