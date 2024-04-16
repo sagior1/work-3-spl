@@ -172,11 +172,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
      private void rrq(byte[] message){
         String fileName = new String(message, StandardCharsets.UTF_8);
         if(!connections.clientExist(connectionId)){
-            //TODO error
+            error((short) 6 , errorMesseges[6]);
         }
         else{
             if(!containsFileWithName(fileName, "Flies"+File.separator)){
-                //TODO error
+                error((short) 1, errorMesseges[1]);
             }
             else{
                 Path filePath = serverPath.resolve(fileName);
