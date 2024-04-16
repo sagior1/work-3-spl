@@ -302,5 +302,37 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         short ackNum = (short) (((short) message[0] & 0xFF) << 8 | (short) (message[1] & 0xFF));
         System.out.println("ACK " + (ackNum));
     }
+
+    private void dirq(){
+        //TODO - check if the user is logged in
+        File directory = new File("flies" + File.separator);
+        List<String> fileList = Arrays.asList(directory.list());
+        List<byte[]> dirInBytes = new ArrayList<>();
+        
+        // Iterate through each filename, and convert the filename in string to bytes
+        for (String filename : fileList) {
+            byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
+            dirInBytes.add(filenameBytes);
+            dirInBytes.add("\n".getBytes(StandardCharsets.UTF_8));
+        }
+        //convert the list of bytes to an array of bytes
+        int totalLength = 0;
+        // Calculate the total length of the byte array
+        for (byte[] bytes : dirInBytes) {
+            totalLength += bytes.length;
+        }
+        
+        byte[] dir = new byte[totalLength];
+        
+        int currentIndex = 0;
+        // Copy each byte array from the list to the result array
+        for (byte[] bytes : dirInBytes) {
+            System.arraycopy(bytes, 0, dir, currentIndex, bytes.length);
+            currentIndex += bytes.length;
+        }
+        
+        connections.send(this.connectionId, dir);
+    }
+    
     
 }
