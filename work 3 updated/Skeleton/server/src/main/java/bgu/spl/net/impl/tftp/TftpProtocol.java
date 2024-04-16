@@ -25,6 +25,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private ConnectionsImpl<byte[]> connections;
     int blockNum;
     LinkedList<byte[]> dataToUpload;
+    LinkedList<Byte> dataToSend;
     private Path serverPath;
     private String fileName;
     String[] errorMesseges;
@@ -71,9 +72,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case BCAST://TODO delete, it is not needed
                 break;
             case ACK:
-                //handleAck(message);
+                recieveAck(message);
                 break;
-            case ERROR:
+            case ERROR://TODO delete, is is not needed
                 //handleError(message);
                 break;
             // Add cases for other opcodes
@@ -119,7 +120,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void data(byte[] message){
         byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
         dataToUpload.add(dataArray);
-        blockNum++;//TODO remember to inizialize to 0
+        blockNum++;//TODO remember to inizialize to 0 also not sure if is needed
         ack(blockNum);
         if(dataArray.length<512){
             File uploadAddress = new File(serverPath + "/" + this.fileName);//will be fine after add rotem's part
@@ -192,7 +193,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 for (byte b : fileBytes) {
                     data.add(b);
                 }
-                sendData(data);
+                this.dataToSend = data;
+                sendData();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -201,19 +203,21 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
      }
 
     //send data to client if its dirq or rrq
-     private void sendData(LinkedList<Byte> data){
-        int blockNumber=0;
-        if (data.size() <= 512){
-            byte[] byteArray = new byte[data.size()];
+     private void sendData(){
+        
+        if (dataToSend.size() <= 512){
+            byte[] byteArray = new byte[dataToSend.size()];
             byteArray[0] = 0;
             byteArray[1] = 3;
-            byteArray[2] = (byte) (data.size() >> 8);
-            byteArray[3] = (byte) data.size();
+            byteArray[2] = (byte) (dataToSend.size() >> 8);
+            byteArray[3] = (byte) dataToSend.size();
             byteArray[4] = 0;
-            byteArray[5] = (byte) blockNumber;
+            byteArray[5] = (byte) blockNum;
             for (int i=6;i<518;i++) {
-                byteArray[i] = data.remove();  // Auto-unboxing Byte to byte
+                byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
+            blockNum=0;
+            dataToSend.clear();
             connections.send(connectionId, byteArray);
         }
         else{
@@ -223,10 +227,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             byteArray[2] = (byte) (512 >> 8);
             byteArray[3] = (byte) 512;
             byteArray[4] = 0;
-            byteArray[5] = (byte) blockNumber;
+            byteArray[5] = (byte) blockNum;
             for (int i=6;i<518;i++) {
-                byteArray[i] = data.remove();  // Auto-unboxing Byte to byte
+                byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
+            blockNum++;
             connections.send(connectionId, byteArray);
         }
      }
@@ -251,7 +256,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
      private void delq(byte[] message){
-        boolean isdeleted; // TODO - neccery?
         String fileNameTODelete = new String(message);
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
@@ -265,10 +269,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 Files.delete(pathToDelete);
                 ack(0);
                 bcast(true, message);
-                isdeleted = true;
-            } catch (IOException e) {
-                isdeleted = false;
-            }
+            } catch (IOException e) {}
             }
             else{
                 error((short) 1, errorMesseges[1]);
@@ -295,6 +296,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         for (Integer id : clients.keySet()) {
              connections.send(id,data);
         }
+    }
+    private void recieveAck(byte[] message){
+        sendData();
+        short ackNum = (short) (((short) message[0] & 0xFF) << 8 | (short) (message[1] & 0xFF));
+        System.out.println("ACK " + (ackNum));
     }
     
 }
