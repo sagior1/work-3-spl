@@ -242,5 +242,27 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         errorPacket[errorPacket.length-1] = 0;
         connections.send(connectionId, errorPacket);
     }
+
+     private void delq(byte[] message){
+        boolean isdeleted; // TODO - neccery?
+        String fileNameTODelete = new String(message);
+        //TODO - check if the user is logged in?
+        if (containsFileWithName(fileNameTODelete,"Flies" + File.separator)){
+            File fileToDelete = new File(fileNameTODelete);
+            String filePath = fileToDelete.getAbsolutePath();
+            Path pathToDelete = Paths.get(filePath);
+            try {
+            Files.delete(pathToDelete);
+            //TODO - send ack
+            //TODO - send bcast
+            isdeleted = true;
+        } catch (IOException e) {
+            isdeleted = false;
+        }
+        }
+        else{
+            error((short) 1, errorMesseges[1]);
+        }
+    }
     
 }
