@@ -136,18 +136,22 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     private void wrq(byte[] fileNameBytes) {
-        //TODO: see if the user is logged in
-        this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
-        if (containsFileWithName(fileName, "Flies" + File.separator)){
-            error((short) 5, errorMesseges[5]);
-        }
-        else if ((fileName.contains("0"))){
-
-            error((short) 0, errorMesseges[0]);
+        if(!connections.clientExist(connectionId)){
+            error((short) 6 , errorMesseges[6]);
         }
         else{
-            //TODO: send ack
-            //TODO: see if there is anything else to add here
+            this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+            if (containsFileWithName(fileName, "Flies" + File.separator)){
+                error((short) 5, errorMesseges[5]);
+            }
+            else if ((fileName.contains("0"))){
+
+                error((short) 0, errorMesseges[0]);
+            }
+            else{
+                //TODO: send ack
+                //TODO: see if there is anything else to add here
+            }
         }
     }
 
@@ -247,23 +251,30 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
      private void delq(byte[] message){
         boolean isdeleted; // TODO - neccery?
         String fileNameTODelete = new String(message);
-        //TODO - check if the user is logged in?
-        if (containsFileWithName(fileNameTODelete,"Flies" + File.separator)){
-            File fileToDelete = new File(fileNameTODelete);
-            String filePath = fileToDelete.getAbsolutePath();
-            Path pathToDelete = Paths.get(filePath);
-            try {
-            Files.delete(pathToDelete);
-            //TODO - send ack
-            //TODO - send bcast
-            isdeleted = true;
-        } catch (IOException e) {
-            isdeleted = false;
-        }
+        if(!connections.clientExist(connectionId)){
+            error((short) 6 , errorMesseges[6]);
         }
         else{
-            error((short) 1, errorMesseges[1]);
+            if (containsFileWithName(fileNameTODelete,"Flies" + File.separator)){
+                File fileToDelete = new File(fileNameTODelete);
+                String filePath = fileToDelete.getAbsolutePath();
+                Path pathToDelete = Paths.get(filePath);
+                try {
+                Files.delete(pathToDelete);
+                ack(0);
+                //TODO - send bcast
+                isdeleted = true;
+            } catch (IOException e) {
+                isdeleted = false;
+            }
+            }
+            else{
+                error((short) 1, errorMesseges[1]);
+            }
         }
+    }
+    private void bcast(byte[] message){
+        
     }
     
 }
