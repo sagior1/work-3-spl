@@ -149,8 +149,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 error((short) 0, errorMesseges[0]);
             }
             else{
-                //TODO: send ack
-                //TODO: see if there is anything else to add here
+                ack(0);
             }
         }
     }
@@ -274,7 +273,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
     private void bcast(byte[] message){
-        
+
     }
     
 }
