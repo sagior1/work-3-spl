@@ -148,18 +148,18 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
-            if (containsFileWithName(fileName, "Flies" + File.separator)){
-                error((short) 5, errorMesseges[5]);
-            }
-            else if ((fileName.contains("0"))){
-
+            if ((fileName.contains("0"))){
                 error((short) 0, errorMesseges[0]);
             }
-            else{
+            else if (!(containsFileWithName(fileName, "Flies"+File.separator))){
                 ack(0);
+            }
+            else{
+                error((short) 0, errorMesseges[0]);;
             }
         }
     }
+
 
     /**
  * Checks if a file with the specified name exists within the given directory.
