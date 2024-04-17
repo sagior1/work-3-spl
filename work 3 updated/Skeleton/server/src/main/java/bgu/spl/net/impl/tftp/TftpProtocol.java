@@ -306,7 +306,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         System.out.println("ACK " + (ackNum));
     }
 
-    private void dirq(){
+ private void dirq(){
         //TODO - check if the user is logged in
         File directory = new File("flies" + File.separator);
         List<String> fileList = Arrays.asList(directory.list());
@@ -330,10 +330,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         int currentIndex = 0;
         // Copy each byte array from the list to the result array
         for (byte[] bytes : dirInBytes) {
-            System.arraycopy(bytes, 0, dir, currentIndex, bytes.length);
+            System.arraycopy(bytes, 0, dir, currentIndex, bytes.length); 
             currentIndex += bytes.length;
         }
-        
+
         connections.send(this.connectionId, dir);
     }
     
