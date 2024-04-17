@@ -67,12 +67,13 @@ public class ConnectionsImpl<T> implements Connections<T>
     }
     public void addName(Integer id,String name){
         idToName.put(id, name);
+        System.out.println("added name" + idToName.get(id));
     }
     public boolean clientExist(String name){
-        return idToName.contains(name);
+        return idToName.containsValue(name);
     }
-    public boolean clientExist(int id){
-        return clients.contains(id);
+    public boolean clientExist(Integer id){
+        return idToName.containsKey(id);
     }
     
 }
