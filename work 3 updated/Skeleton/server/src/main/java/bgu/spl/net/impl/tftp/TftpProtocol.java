@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
@@ -33,6 +34,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
+        System.out.println("entered start in TFTPPROTOCOL");
         this.connectionId=connectionId;
         this.connections=(ConnectionsImpl<byte[]>)connections;
         blockNum=0;
@@ -54,9 +56,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         switch (opcode) {
             case RRQ:
                 rrq(message);
-                //handleReadRequest(message);
+                break;
             case WRQ:
                 wrq(message);
+                break;
             case DIRQ:
                 dirq();
                 break;
@@ -64,7 +67,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 logrq(message);
                 break;
             case DELRQ:
-                delrq();
+                delq(message);
                 break;
             case DISC:
                 disc();
@@ -72,13 +75,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             case DATA:
                 data(message);
                 break;
-            case BCAST://TODO delete, it is not needed
-                break;
             case ACK:
                 recieveAck(message);
-                break;
-            case ERROR://TODO delete, is is not needed
-                //handleError(message);
                 break;
             // Add cases for other opcodes
             default:
@@ -102,6 +100,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             connections.addName(connectionId, name);
+            System.out.println("client supposed to be logged in");
             ack(0);
         }
     }
@@ -110,8 +109,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             error((short) 6, errorMesseges[6]);
         }
         else{
-            connections.disconnect(connectionId);
             ack(0);
+            connections.disconnect(connectionId);
+            shouldTerminate=true;
         }
     }
     private void ack(int num){
@@ -305,13 +305,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         short ackNum = (short) (((short) message[0] & 0xFF) << 8 | (short) (message[1] & 0xFF));
         System.out.println("ACK " + (ackNum));
     }
-
- private void dirq(){
+    
+    private void dirq(){
         //TODO - check if the user is logged in
         File directory = new File("flies" + File.separator);
         List<String> fileList = Arrays.asList(directory.list());
         List<byte[]> dirInBytes = new ArrayList<>();
-        
+
         // Iterate through each filename, and convert the filename in string to bytes
         for (String filename : fileList) {
             byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
@@ -324,9 +324,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         for (byte[] bytes : dirInBytes) {
             totalLength += bytes.length;
         }
-        
+
         byte[] dir = new byte[totalLength];
-        
+
         int currentIndex = 0;
         // Copy each byte array from the list to the result array
         for (byte[] bytes : dirInBytes) {
@@ -336,6 +336,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
         connections.send(this.connectionId, dir);
     }
-    
-    
+
+ 
+ 
 }
