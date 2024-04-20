@@ -27,6 +27,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     int blockNum;
     LinkedList<byte[]> dataToUpload;
     LinkedList<Byte> dataToSend;
+    boolean dataSentIsRRQ;
     private Path serverPath;
     private String fileName;
     String[] errorMesseges;
@@ -34,10 +35,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
-        System.out.println("entered start in TFTPPROTOCOL");
         this.connectionId=connectionId;
         this.connections=(ConnectionsImpl<byte[]>)connections;
         blockNum=0;
+        dataSentIsRRQ=false;
         serverPath=Paths.get("").toAbsolutePath().resolve("Flies");
         this.errorMesseges = new String[]{
             "Not defined, see error message (if any).",
@@ -203,7 +204,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
      private void rrq(byte[] message){
         System.out.println("entered rrq in tftp server protocol");
-        String fileName = extractName(message);
+        fileName = extractName(message);
+        dataSentIsRRQ=true;
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
         }
@@ -245,6 +247,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
             blockNum=0;
             dataToSend.clear();
+            if (dataSentIsRRQ) {
+                System.out.println("RRQ "+fileName+ " complete");
+            }
             connections.send(connectionId, byteArray);
         }
         else{
@@ -330,7 +335,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             short ackNum = (short) (((short) message[0] & 0xFF) << 8 | (short) (message[1] & 0xFF));
             System.out.println("ACK recieved num: " + (ackNum));
             sendData();
-            
         }
     }
     
