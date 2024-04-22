@@ -68,7 +68,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 logrq(message);
                 break;
             case DELRQ:
-                delrq(message);
+                delq(message);
                 break;
             case DISC:
                 disc();
@@ -111,8 +111,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             ack(0);
-            connections.disconnect(connectionId);
             shouldTerminate=true;
+            System.out.println("shouldTerminate: "+ shouldTerminate);
+            connections.disconnect(connectionId);
         }
     }
     private void ack(int num){
@@ -203,7 +204,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
      private void rrq(byte[] message){
-        System.out.println("entered rrq in tftp server protocol");
         fileName = extractName(message);
         dataSentIsRRQ=true;
         if(!connections.clientExist(connectionId)){
@@ -232,8 +232,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     //send data to client if its dirq or rrq
      private void sendData(){
-        System.out.println("entred sendData inside server protocol");
-        if (dataToSend.size() <= 512){
+
+        if (dataToSend.size() < 512){
+            blockNum++;
+
             byte[] byteArray = new byte[dataToSend.size()+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
@@ -241,19 +243,20 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             byteArray[3] = (byte) dataToSend.size();
             byteArray[4] = 0;
             byteArray[5] = (byte) blockNum;
-            System.out.println("supposed to finish cuz we are in block number: "+ blockNum);
-            for (int i=6;!dataToSend.isEmpty();i++) {
-                byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
+            int index =6;
+            for (Byte b: dataToSend) {
+                byteArray[index] = b;  // Auto-unboxing Byte to byte
+                index++;
             }
-            blockNum=0;
             dataToSend.clear();
+            blockNum=0;
             if (dataSentIsRRQ) {
                 System.out.println("RRQ "+fileName+ " complete");
             }
             connections.send(connectionId, byteArray);
         }
         else{
-            System.out.println("block number: "+ blockNum);
+            blockNum++;
             byte[] byteArray = new byte[512+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
@@ -264,7 +267,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             for (int i=6;i<518;i++) {
                 byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
-            blockNum++;
             connections.send(connectionId, byteArray);
         }
      }
@@ -274,7 +276,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         byte[] errorCodeBytes = new byte[2];
         errorCodeBytes[0] = (byte) ((code >> 8) & 0xFF);
         errorCodeBytes[1] = (byte) (code & 0xFF);
-        byte[] errorPacket = new byte[errorMessageBytes.length +5];
+        byte[] errorPacket = new byte[errorMessageBytes.length +4];
         //first 2 byte - opCode
         errorPacket[0] = (byte) ((opCode >> 8) & 0xFF);
         errorPacket[1] = (byte) (opCode & 0xFF);
@@ -284,7 +286,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //combine the messege and the first bytes
         System.arraycopy(errorMessageBytes, 0, errorPacket, 4, errorMessageBytes.length);
         //add 0 to the end of the packet
-        errorPacket[errorPacket.length-1] = 0;
+        //errorPacket[errorPacket.length-1] = 0;
         connections.send(connectionId, errorPacket);
     }
 
