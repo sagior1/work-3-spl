@@ -235,6 +235,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     //send data to client if its dirq or rrq
      private void sendData(){
         System.out.println("entred sendData inside server protocol");
+        blockNum++;
 
         if (dataToSend.size() < 512){
             System.out.println(dataToSend.size());
@@ -246,9 +247,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             byteArray[4] = 0;
             byteArray[5] = (byte) blockNum;
             System.out.println("supposed to finish cuz we are in block number: "+ blockNum);
-            for (int i=6;!dataToSend.isEmpty();i++) {
-                byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
+            int index =6;
+            for (Byte b: dataToSend) {
+                byteArray[index] = b;  // Auto-unboxing Byte to byte
+                index++;
             }
+            dataToSend.clear();
             blockNum=0;
             //dataToSend.clear();
             if (dataSentIsRRQ) {
@@ -258,6 +262,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             connections.send(connectionId, byteArray);
         }
         else{
+            blockNum++;
             System.out.println("block number: "+ blockNum);
             byte[] byteArray = new byte[512+6];
             byteArray[0] = 0;
@@ -269,7 +274,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             for (int i=6;i<518;i++) {
                 byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
-            blockNum++;
             connections.send(connectionId, byteArray);
         }
      }
