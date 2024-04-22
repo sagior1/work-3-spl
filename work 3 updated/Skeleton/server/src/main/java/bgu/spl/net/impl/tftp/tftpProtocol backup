@@ -68,7 +68,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 logrq(message);
                 break;
             case DELRQ:
-                delq(message);
+                delrq(message);
                 break;
             case DISC:
                 disc();
