@@ -19,6 +19,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.print.DocFlavor.STRING;
+
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private boolean shouldTerminate = false;
@@ -40,6 +42,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         blockNum=0;
         dataSentIsRRQ=false;
         serverPath=Paths.get("").toAbsolutePath().resolve("Flies");
+        dataToUpload = new LinkedList<byte[]>();
         this.errorMesseges = new String[]{
             "Not defined, see error message (if any).",
             "File not found – RRQ DELRQ of non-existing file.",
@@ -68,7 +71,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 logrq(message);
                 break;
             case DELRQ:
-                delq(message);
+                delrq(message);
                 break;
             case DISC:
                 disc();
@@ -81,6 +84,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 break;
             // Add cases for other opcodes
             default:
+                System.out.println("defoult");
                 break;//אולי לעשות פה משהו אחר
         }
     }
@@ -103,6 +107,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             connections.addName(connectionId, name);
             System.out.println("client supposed to be logged in");
             ack(0);
+            String msg = new String("it will work!");
+            byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
+            bcast(true, bytes);
         }
     }
     private void disc(){
@@ -111,9 +118,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             ack(0);
-            shouldTerminate=true;
-            System.out.println("shouldTerminate: "+ shouldTerminate);
             connections.disconnect(connectionId);
+            shouldTerminate=true;
         }
     }
     private void ack(int num){
@@ -123,17 +129,25 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     //recieve the data of a file from the client and upload it (after the cliet did write request)
     private void data(byte[] message){
+        //TODO - delete test
+        System.out.println("try to get the data");
+        System.out.println(blockNum);
+
         byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
         dataToUpload.add(dataArray);
         blockNum++;//TODO remember to inizialize to 0 also not sure if is needed
         ack(blockNum);
         if(dataArray.length<512){
-            File uploadAddress = new File(serverPath + "/" + this.fileName);//will be fine after add rotem's part
+            File uploadAddress = new File(serverPath + File.separator + this.fileName);//will be fine after add rotem's part
+            //TODO - delete the test
+            System.out.println(uploadAddress.toString());  
+
             try (FileOutputStream out = new FileOutputStream(uploadAddress, true)) {
                 uploadAddress.createNewFile();
                 for (byte[] data : dataToUpload) {
                     out.write(data); // Write each byte array segment to the file
                 }
+                ack(blockNum); // TODO - good?
                 blockNum=0;//TODO not sure if this is needed
                 bcast(false, message);
             } catch (IOException e) {
@@ -149,15 +163,20 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             error((short) 6 , errorMesseges[6]);
         }
         else{
-            this.fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+            this.fileName = extractName(fileNameBytes);
+            //If the file already exists on the server, return an error.
             if (containsFileWithName(fileName, "Flies" + File.separator)){
+                //TODO - delete comment
+                System.err.println("the file: " + fileName + "already exists in server");
                 error((short) 5, errorMesseges[5]);
             }
             else if ((fileName.contains("0"))){
-
+                System.out.println("the file " + fileName + "contains 0 and its not good");
                 error((short) 0, errorMesseges[0]);
             }
             else{
+                //TODO - delete test
+                System.err.println("wrq - needs to send ack");
                 ack(0);
             }
         }
@@ -181,6 +200,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     //     return false;
     //  }
     public static boolean containsFileWithName(String inputString, String directoryPath) {
+        //TODO - delete the comment
+        System.out.println("searching for: " + inputString + "\n in: " + directoryPath);
         File directory = new File(directoryPath);
         if (!directory.exists()) {
             System.out.println("Directory does not exist: " + directoryPath);
@@ -195,7 +216,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             List<String> fileList = Arrays.asList(directory.list());
             System.out.println("Files in directory: " + fileList);
             System.out.println(inputString);
-            System.out.println(fileList.contains(inputString));
+            System.out.println(fileList.contains(inputString) + " hey");
             return fileList.contains(inputString);
         } catch (SecurityException e) {
             System.out.println("Access denied to directory: " + directoryPath);
@@ -204,6 +225,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
      private void rrq(byte[] message){
+        System.out.println("entered rrq in tftp server protocol");
         fileName = extractName(message);
         dataSentIsRRQ=true;
         if(!connections.clientExist(connectionId)){
@@ -232,10 +254,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     //send data to client if its dirq or rrq
      private void sendData(){
-
-        if (dataToSend.size() < 512){
-            blockNum++;
-
+        System.out.println("entred sendData inside server protocol");
+        if (dataToSend.size() <= 512){
             byte[] byteArray = new byte[dataToSend.size()+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
@@ -243,20 +263,19 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             byteArray[3] = (byte) dataToSend.size();
             byteArray[4] = 0;
             byteArray[5] = (byte) blockNum;
-            int index =6;
-            for (Byte b: dataToSend) {
-                byteArray[index] = b;  // Auto-unboxing Byte to byte
-                index++;
+            System.out.println("supposed to finish cuz we are in block number: "+ blockNum);
+            for (int i=6;!dataToSend.isEmpty();i++) {
+                byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
-            dataToSend.clear();
             blockNum=0;
+            dataToSend.clear();
             if (dataSentIsRRQ) {
                 System.out.println("RRQ "+fileName+ " complete");
             }
             connections.send(connectionId, byteArray);
         }
         else{
-            blockNum++;
+            System.out.println("block number: "+ blockNum);
             byte[] byteArray = new byte[512+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
@@ -267,6 +286,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             for (int i=6;i<518;i++) {
                 byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
+            blockNum++;
             connections.send(connectionId, byteArray);
         }
      }
@@ -276,7 +296,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         byte[] errorCodeBytes = new byte[2];
         errorCodeBytes[0] = (byte) ((code >> 8) & 0xFF);
         errorCodeBytes[1] = (byte) (code & 0xFF);
-        byte[] errorPacket = new byte[errorMessageBytes.length +4];
+        byte[] errorPacket = new byte[errorMessageBytes.length +5];
         //first 2 byte - opCode
         errorPacket[0] = (byte) ((opCode >> 8) & 0xFF);
         errorPacket[1] = (byte) (opCode & 0xFF);
@@ -286,25 +306,36 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //combine the messege and the first bytes
         System.arraycopy(errorMessageBytes, 0, errorPacket, 4, errorMessageBytes.length);
         //add 0 to the end of the packet
-        //errorPacket[errorPacket.length-1] = 0;
+        errorPacket[errorPacket.length-1] = 0;
         connections.send(connectionId, errorPacket);
     }
 
-     private void delq(byte[] message){
-        String fileNameTODelete = new String(message);
+     private void delrq(byte[] message){
+        String fileNameTODelete = extractName(message);
+        System.out.println(this.serverPath);
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
         }
         else{
             if (containsFileWithName(fileNameTODelete,"Flies" + File.separator)){
-                File fileToDelete = new File(fileNameTODelete);
-                String filePath = fileToDelete.getAbsolutePath();
-                Path pathToDelete = Paths.get(filePath);
-                try {
-                Files.delete(pathToDelete);
-                ack(0);
-                bcast(true, message);
-            } catch (IOException e) {}
+                //TODO-delete
+                System.out.println("Found the file " + fileNameTODelete + " and will delete it");
+
+                File fileToDelete = new File(serverPath + File.separator + fileNameTODelete);
+                //TODO-delete
+                System.out.println(fileNameTODelete);
+                System.out.println(fileToDelete.getAbsolutePath());  
+                System.out.println(fileToDelete.exists());
+                //boolean isDeleted = fileToDelete.delete();
+                //System.err.println(fileToDelete.delete());
+
+                if (fileToDelete.delete()){
+                    System.out.println("the file: " + fileNameTODelete + " has been deleted successfully");
+                    ack(0);
+                    bcast(true, message);
+                }
+                else {System.err.println("we couldnt delete the file: " + fileNameTODelete);}
+                
             }
             else{
                 error((short) 1, errorMesseges[1]);
@@ -326,9 +357,16 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             System.out.println("WRQ "+fileName+" complete");
             System.out.println("BCAST add "+fileName);
         }
+        //TODO - delete test
+        System.err.println("problem here?1");
+
         System.arraycopy(message,0,data,3,message.length);
         ConcurrentHashMap<Integer,BlockingConnectionHandler<byte[]>> clients=connections.getclientsMap();
+
+        System.err.println("problem here?2");
         for (Integer id : clients.keySet()) {
+            System.err.println("problem here?3");
+
              connections.send(id,data);
         }
     }
@@ -341,35 +379,63 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
     
     private void dirq(){
-        //TODO - check if the user is logged in
-        File directory = new File("flies" + File.separator);
-        List<String> fileList = Arrays.asList(directory.list());
-        List<byte[]> dirInBytes = new ArrayList<>();
-
-        // Iterate through each filename, and convert the filename in string to bytes
-        for (String filename : fileList) {
-            byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
-            dirInBytes.add(filenameBytes);
-            dirInBytes.add("\n".getBytes(StandardCharsets.UTF_8));
+        if(!connections.clientExist(connectionId)){
+            error((short) 6 , errorMesseges[6]);
         }
-        //convert the list of bytes to an array of bytes
-        int totalLength = 0;
-        // Calculate the total length of the byte array
-        for (byte[] bytes : dirInBytes) {
-            totalLength += bytes.length;
-        }
+        else{
+            File directory = new File("flies" + File.separator);
+            List<String> fileList = Arrays.asList(directory.list());
+            List<byte[]> dirInBytes = new ArrayList<>();
 
-        byte[] dir = new byte[totalLength];
+            // Iterate through each filename, and convert the filename in string to bytes
+            for (String filename : fileList) {
+                byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
+                dirInBytes.add(filenameBytes);
+                dirInBytes.add("\n".getBytes(StandardCharsets.UTF_8));
+            }
+            //convert the list of bytes to an array of bytes
+            int totalLength = 0;
+            // Calculate the total length of the byte array
+            for (byte[] bytes : dirInBytes) {
+                totalLength += bytes.length;
+            }
 
-        int currentIndex = 0;
-        // Copy each byte array from the list to the result array
-        for (byte[] bytes : dirInBytes) {
-            System.arraycopy(bytes, 0, dir, currentIndex, bytes.length); 
-            currentIndex += bytes.length;
-        }
+            byte[] dir = new byte[totalLength];
 
-        connections.send(this.connectionId, dir);
+            int currentIndex = 0;
+            // Copy each byte array from the list to the result array
+            for (byte[] bytes : dirInBytes) {
+                System.arraycopy(bytes, 0, dir, currentIndex, bytes.length); 
+                currentIndex += bytes.length;
+            }
+                //TODO - delete the test
+                    // //test
+                    // System.out.println("Array: " + Arrays.toString(dir));
+                    // //test
+            this.dataToSend = arrayToList(dir);
+            sendData();
     }
+    }
+
+        /**
+    public static String extractName(byte[] array) {//TODO copied from ron so needs to be changed
+ * converts a byte[] array to a List<Bytes>
+        int length = array.length;
+ *
+        byte[] usernameBytes = new byte[length - 2]; // excluding opcode and terminator
+ * @param byteArray      the byte[] array we want to convert
+        System.arraycopy(array, 2, usernameBytes, 0, length - 2);
+ * @return              same data in List<Bytes>
+        return new String(usernameBytes, StandardCharsets.UTF_8);
+ */
+public static LinkedList<Byte> arrayToList(byte[] byteArray) {
+    LinkedList<Byte> byteLinkedList = new LinkedList<>();
+    for (byte b : byteArray) {
+        byteLinkedList.add(b);
+    }
+    return byteLinkedList;
+}
+
 
     //extarcting the file name (for rrq etc)
     public static String extractName(byte[] array) {//TODO copied from ron so needs to be changed
@@ -378,4 +444,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         System.arraycopy(array, 2, usernameBytes, 0, length - 2);
         return new String(usernameBytes, StandardCharsets.UTF_8);
     }
+
+
 }
