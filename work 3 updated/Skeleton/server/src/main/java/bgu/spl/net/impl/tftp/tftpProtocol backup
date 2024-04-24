@@ -127,15 +127,17 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         connections.send(connectionId, new byte []{0,4,(byte)(a >> 8) , (byte)( a & 0xff )});
     }
 
-    //recieve the data of a file from the client and upload it (after the cliet did write request)
+     //recieve the data of a file from the client and upload it (after the cliet did write request)
     private void data(byte[] message){
-        //TODO - delete test
         System.out.println("try to get the data");
         System.out.println(blockNum);
-
-        byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
+        byte[] dataArray = Arrays.copyOfRange(message, 4, message.length);
         dataToUpload.add(dataArray);
         blockNum++;//TODO remember to inizialize to 0 also not sure if is needed
+
+         //TODO - delete test
+        
+        System.out.println(blockNum);
         ack(blockNum);
         if(dataArray.length<512){
             File uploadAddress = new File(serverPath + File.separator + this.fileName);//will be fine after add rotem's part
@@ -147,9 +149,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 for (byte[] data : dataToUpload) {
                     out.write(data); // Write each byte array segment to the file
                 }
-                ack(blockNum); // TODO - good?
+                //ack(blockNum); // TODO - good?
                 blockNum=0;//TODO not sure if this is needed
-                bcast(false, message);
+                bcast(false, this.fileName.getBytes());
+                dataToUpload.clear();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -157,13 +160,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
         
 
-    //request to add a file, so we check if it can be added
+   //request to add a file, so we check if it can be added
     private void wrq(byte[] fileNameBytes) {
+        this.fileName = extractName(fileNameBytes);
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
         }
         else{
-            this.fileName = extractName(fileNameBytes);
             //If the file already exists on the server, return an error.
             if (containsFileWithName(fileName, "Flies" + File.separator)){
                 //TODO - delete comment
@@ -171,7 +174,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 error((short) 5, errorMesseges[5]);
             }
             else if ((fileName.contains("0"))){
-                System.out.println("the file " + fileName + "contains 0 and its not good");
+                System.out.println("the file " + fileName + "contains 0");
                 error((short) 0, errorMesseges[0]);
             }
             else{
@@ -310,8 +313,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         connections.send(connectionId, errorPacket);
     }
 
-     private void delrq(byte[] message){
+      private void delrq(byte[] message){
         String fileNameTODelete = extractName(message);
+         //TODO - ניסיון
+        byte[] dataMsg = fileNameTODelete.getBytes();
+
+
         System.out.println(this.serverPath);
         if(!connections.clientExist(connectionId)){
             error((short) 6 , errorMesseges[6]);
@@ -332,7 +339,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 if (fileToDelete.delete()){
                     System.out.println("the file: " + fileNameTODelete + " has been deleted successfully");
                     ack(0);
-                    bcast(true, message);
+                    bcast(true, dataMsg);
                 }
                 else {System.err.println("we couldnt delete the file: " + fileNameTODelete);}
                 
@@ -342,6 +349,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
         }
     }
+
 
     private void bcast(boolean isDeleted,byte[] message){
         byte[] data=new byte[3 + message.length];
