@@ -33,7 +33,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         }
     }
 
-    @Override
+@Override
     public byte[] encode(byte[] message) {
         Opcode opcode = Opcode.fromU16((message[0] << 8) | (message[1] & 0xFF));
         List<Byte> res = new ArrayList<>();
@@ -45,12 +45,16 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             case ERROR:
             case BCAST:
             case LOGRQ:
-            case DELRQ:
                 for (byte b : message) {
                     res.add(b);
                 }
+                //TODO - delete
+                System.out.println("soppused to add 0");
                 res.add((byte) 0x0);
+                //TODO-delete
+                System.out.println(res.toString());
                 break;
+            case DELRQ:
             case ACK:
             case DIRQ:
             case DISC:
@@ -58,11 +62,12 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
                 for (byte b : message) {
                     res.add(b);
                 }
+                //TODO-delete
+                System.out.println(res.toString());
                 break;
         }
         return listToArray(res);
     }
-
     private List<Byte> poolBytes() {
         List<Byte> mes = new ArrayList<>(bytes);
         bytes.clear();
