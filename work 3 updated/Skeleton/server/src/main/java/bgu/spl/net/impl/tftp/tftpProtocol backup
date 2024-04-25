@@ -299,7 +299,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         byte[] errorCodeBytes = new byte[2];
         errorCodeBytes[0] = (byte) ((code >> 8) & 0xFF);
         errorCodeBytes[1] = (byte) (code & 0xFF);
-        byte[] errorPacket = new byte[errorMessageBytes.length +5];
+        byte[] errorPacket = new byte[errorMessageBytes.length +4];
         //first 2 byte - opCode
         errorPacket[0] = (byte) ((opCode >> 8) & 0xFF);
         errorPacket[1] = (byte) (opCode & 0xFF);
@@ -309,7 +309,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //combine the messege and the first bytes
         System.arraycopy(errorMessageBytes, 0, errorPacket, 4, errorMessageBytes.length);
         //add 0 to the end of the packet
-        errorPacket[errorPacket.length-1] = 0;
+        //errorPacket[errorPacket.length-1] = 0;
         connections.send(connectionId, errorPacket);
     }
 
