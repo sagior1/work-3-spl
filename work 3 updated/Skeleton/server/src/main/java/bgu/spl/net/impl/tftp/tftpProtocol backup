@@ -256,6 +256,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     //send data to client if its dirq or rrq
      private void sendData(){
+        blockNum++;
         System.out.println("entred sendData inside server protocol");
         if (dataToSend.size() <= 512){
             byte[] byteArray = new byte[dataToSend.size()+6];
@@ -288,7 +289,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             for (int i=6;i<518;i++) {
                 byteArray[i] = dataToSend.remove();  // Auto-unboxing Byte to byte
             }
-            blockNum++;
+            //blockNum++;
             connections.send(connectionId, byteArray);
         }
      }
