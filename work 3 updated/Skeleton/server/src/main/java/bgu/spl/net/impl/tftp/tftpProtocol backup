@@ -105,7 +105,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             connections.addName(connectionId, name);
-            System.out.println("client supposed to be logged in");
             ack(0);
             String msg = new String("it will work!");
             byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
@@ -131,7 +130,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void data(byte[] message){
         System.out.println("try to get the data");
         System.out.println(blockNum);
-        byte[] dataArray = Arrays.copyOfRange(message, 4, message.length);
+        byte[] dataArray = Arrays.copyOfRange(message, 6, message.length);
         dataToUpload.add(dataArray);
         blockNum++;//TODO remember to inizialize to 0 also not sure if is needed
 
