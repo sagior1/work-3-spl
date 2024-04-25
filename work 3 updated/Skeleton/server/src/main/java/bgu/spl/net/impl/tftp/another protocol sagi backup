@@ -117,7 +117,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
     private void ack(int num){
-        System.out.println("should send ack "+ num);
         short a = (short) num;
         connections.send(connectionId, new byte []{0,4,(byte)(a >> 8) , (byte)( a & 0xff )});
     }
@@ -205,7 +204,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
      private void rrq(byte[] message){
-        System.out.println("entered rrq in tftp server protocol");
         fileName = extractName(message);
         dataSentIsRRQ=true;
         if(!connections.clientExist(connectionId)){
@@ -234,11 +232,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     //send data to client if its dirq or rrq
      private void sendData(){
-        System.out.println("entred sendData inside server protocol");
-        blockNum++;
 
         if (dataToSend.size() < 512){
-            System.out.println(dataToSend.size());
+            blockNum++;
+
             byte[] byteArray = new byte[dataToSend.size()+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
@@ -246,7 +243,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             byteArray[3] = (byte) dataToSend.size();
             byteArray[4] = 0;
             byteArray[5] = (byte) blockNum;
-            System.out.println("supposed to finish cuz we are in block number: "+ blockNum);
             int index =6;
             for (Byte b: dataToSend) {
                 byteArray[index] = b;  // Auto-unboxing Byte to byte
@@ -254,16 +250,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
             dataToSend.clear();
             blockNum=0;
-            //dataToSend.clear();
             if (dataSentIsRRQ) {
                 System.out.println("RRQ "+fileName+ " complete");
             }
-            System.out.println(byteArray.length);
             connections.send(connectionId, byteArray);
         }
         else{
             blockNum++;
-            System.out.println("block number: "+ blockNum);
             byte[] byteArray = new byte[512+6];
             byteArray[0] = 0;
             byteArray[1] = 3;
